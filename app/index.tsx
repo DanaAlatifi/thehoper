@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -8,11 +8,29 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from '@expo/vector-icons';
-
+import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "./firebase"; // تأكد من أن المسار صحيح
 
 const Login = () => {
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      // هنا استخدمنا auth بدلاً من firebase.auth()
+      if (user) {
+        // إذا كان المستخدم مسجل دخول
+        console.log("User is signed in:", user);
+        router.replace("/dashboard"); // توجيه إلى صفحة الداشبورد
+      } else {
+        // إذا كان المستخدم غير مسجل دخول
+        console.log("No user is signed in");
+        router.replace("/signin"); // توجيه إلى صفحة تسجيل الدخول
+      }
+    });
+
+    // تنظيف الاشتراك عند مغادرة المكون
+    return () => unsubscribe();
+  }, []);
 
   return (
     <ImageBackground
@@ -39,28 +57,27 @@ const Login = () => {
         </View>
       </ScrollView>
 
-          {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/")}
-          >
-            <Ionicons name="person" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/football")}
-          >
-            <Ionicons name="football" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push("/dashboard")}
-          >
-            <Ionicons name="home" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/")}
+        >
+          <Ionicons name="person" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/football")}
+        >
+          <Ionicons name="football" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/dashboard")}
+        >
+          <Ionicons name="home" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
     </ImageBackground>
   );
 };
@@ -108,11 +125,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#0a2463',
+    flexDirection: "row",
+    backgroundColor: "#0a2463",
     height: 60,
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   navItem: {
     padding: 10,
