@@ -1,123 +1,73 @@
-// import React from "react";
-// import {
-//   View,
-//   TouchableOpacity,
-//   Text,
-//   StyleSheet,
-//   ImageBackground,
-//   ScrollView,
-// } from "react-native";
-// import { useNavigation } from "@react-navigation/native";
-// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+// app/dashboard.tsx
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ImageBackground,
+  Alert,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { logOut } from "../services/authService";
+import { getData } from "../services/databaseService";
+import { useAuth } from "../context/AuthContext";
 
-// // Define your app's navigation structure
-// type RootStackParamList = {
-//   index: undefined;
-//   explore: undefined;
-//   // Add other routes as needed
-// };
-
-// // Create a typed navigation hook
-// type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// const Login: React.FC = () => {
-//   const navigation = useNavigation<LoginScreenNavigationProp>();
-
-//   return (
-//     <ImageBackground
-//       source={require("../../assets/images/thefillbac.png")}
-//       style={styles.container}
-//     >
-//       <ScrollView contentContainerStyle={styles.innerContainer}>
-//         <View style={styles.formWrapper}>
-//           <View style={styles.formContainer}>
-//             <TouchableOpacity
-//               style={styles.button}
-//               onPress={() => navigation.navigate("index")}
-//             >
-//               <Text style={styles.buttonText}>SIGN IN</Text>
-//             </TouchableOpacity>
-
-//             <TouchableOpacity
-//               style={styles.button}
-//               onPress={() => navigation.navigate("explore")}
-//             >
-//               <Text style={styles.buttonText}>SIGN UP</Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//       </ScrollView>
-//     </ImageBackground>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   // Your styles remain the same
-//   container: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   innerContainer: {
-//     width: "100%",
-//     maxWidth: 500,
-//     flexGrow: 1,
-//     justifyContent: "flex-start",
-//     alignItems: "center",
-//     padding: 20,
-//   },
-//   formWrapper: {
-//     flex: 1,
-//     justifyContent: "flex-start",
-//     alignItems: "center",
-//     width: "100%",
-//     paddingTop: 400,
-//   },
-//   formContainer: {
-//     width: "100%",
-//     maxWidth: 400,
-//     backgroundColor: "rgba(255, 255, 255, 0.7)",
-//     padding: 20,
-//     borderRadius: 10,
-//     elevation: 5,
-//   },
-//   button: {
-//     backgroundColor: "#001D75",
-//     paddingVertical: 18,
-//     paddingHorizontal: 65,
-//     borderRadius: 8,
-//     alignItems: "center",
-//     marginTop: 20,
-//   },
-//   buttonText: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//   },
-// });
-
-// export default Login;
-
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  ImageBackground 
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+// Define TypeScript interfaces
+interface Service {
+  id: string;
+  name?: string;
+  description?: string;
+  [key: string]: any; // Allow for additional properties
+}
 
 export default function Dashboard() {
   const router = useRouter();
-  
-  // Array of service blocks (just placeholders for now)
-  const serviceBlocks = Array(8).fill('Service');
-  
+  const { currentUser, isAdmin } = useAuth();
+  const [services, setServices] = useState<Service[]>([]);
+
+  // Get services on component mount
+  useEffect(() => {
+    // Fetch services from Firestore
+    const fetchServices = async () => {
+      const { data, error } = await getData("services");
+      if (error) {
+        console.error("Error fetching services:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setServices(data as Service[]);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await logOut();
+
+    if (error) {
+      Alert.alert("Error", "Failed to log out. Please try again.");
+      return;
+    }
+
+    router.replace("/");
+  };
+
+  // Sample service blocks if no data from Firebase
+  const serviceBlocks =
+    services.length > 0
+      ? services
+      : (Array(8).fill({
+          name: "Service",
+          description: "Sample service",
+        }) as Service[]);
+
   return (
     <ImageBackground
       source={require("../assets/images/thefillbac.png")}
@@ -128,36 +78,69 @@ export default function Dashboard() {
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image
-              source={{uri: 'https://via.placeholder.com/40'}}
+              source={{ uri: "https://via.placeholder.com/40" }}
               style={styles.logoImage}
             />
             <Text style={styles.logoText}>HOPPER</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push("/")}>
-            <Ionicons name="log-out-outline" size={24} color="black" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            {isAdmin && (
+              <TouchableOpacity
+                style={styles.adminButton}
+                onPress={() => router.push("/admin")}
+              >
+                <Ionicons name="settings-outline" size={24} color="#0a2463" />
+                <Text style={styles.adminText}>Admin</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color="black" />
+            </TouchableOpacity>
+          </View>
         </View>
-        
+
+        {/* User Welcome */}
+        {currentUser && (
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.welcomeText}>
+              Welcome, {currentUser.displayName || "User"}!
+              {isAdmin && " (Admin)"}
+            </Text>
+          </View>
+        )}
+
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="gray" style={styles.searchIcon} />
+          <Ionicons
+            name="search"
+            size={20}
+            color="gray"
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
             placeholderTextColor="gray"
           />
         </View>
-        
+
         {/* Service Blocks Grid */}
         <ScrollView style={styles.scrollView}>
           <View style={styles.gridContainer}>
-            {serviceBlocks.map((_, index) => (
+            {serviceBlocks.map((service, index) => (
               <TouchableOpacity
-                key={index}
+                key={service.id || index}
                 style={styles.serviceBlock}
                 onPress={() => console.log(`Service ${index + 1} clicked`)}
               >
-                {/* Empty for now, will be filled with actual service info later */}
+                <Text style={styles.serviceTitle}>
+                  {service.name || `Service ${index + 1}`}
+                </Text>
+                {service.description && (
+                  <Text style={styles.serviceDescription}>
+                    {service.description}
+                  </Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -165,19 +148,19 @@ export default function Dashboard() {
 
         {/* Bottom Navigation */}
         <View style={styles.bottomNav}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.navItem}
             onPress={() => router.push("/")}
           >
             <Ionicons name="person" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.navItem}
             onPress={() => router.push("/football")}
           >
             <Ionicons name="football" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.navItem}
             onPress={() => router.push("/dashboard")}
           >
@@ -192,24 +175,24 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 16,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   logoImage: {
     width: 40,
@@ -218,12 +201,39 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  adminText: {
+    marginLeft: 4,
+    fontWeight: "500",
+    color: "#0a2463",
+  },
+  welcomeContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: "500",
+    color: "#000",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
     marginHorizontal: 16,
     borderRadius: 10,
     paddingHorizontal: 12,
@@ -240,25 +250,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
   serviceBlock: {
-    width: '48%',
+    width: "48%",
     height: 120,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: 10,
     marginBottom: 16,
+    padding: 12,
+    justifyContent: "center",
+  },
+  serviceTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#0a2463",
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
   },
   bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#0a2463',
+    flexDirection: "row",
+    backgroundColor: "#0a2463",
     height: 60,
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   navItem: {
     padding: 10,
